@@ -1,6 +1,6 @@
-import numpy as np
+#import numpy as np
 import tensorflow as tf
-from keras import backend as K
+from tensorflow.keras import backend as K
 
 
 #---------------------------------------------------#
@@ -27,8 +27,8 @@ def yolo_head(feats, anchors, num_classes, input_shape, calc_loss=False):
     # 将预测值调成真实值
     # box_xy对应框的中心点
     # box_wh对应框的宽和高
-    box_xy = (K.sigmoid(feats[..., :2]) + grid) / K.cast(grid_shape[::-1], K.dtype(feats))
-    box_wh = K.exp(feats[..., 2:4]) * anchors_tensor / K.cast(input_shape[::-1], K.dtype(feats))
+    box_xy = (K.sigmoid(feats[..., :2]) + grid) / K.cast(grid_shape[...,::-1], K.dtype(feats))
+    box_wh = K.exp(feats[..., 2:4]) * anchors_tensor / K.cast(input_shape[...,::-1], K.dtype(feats))
     box_confidence = K.sigmoid(feats[..., 4:5])
     box_class_probs = K.sigmoid(feats[..., 5:])
 
@@ -145,7 +145,7 @@ def yolo_loss(args, anchors, num_classes, ignore_thresh=.5, print_loss=False):
             return b+1, ignore_mask
 
         # 遍历所有的图片
-        _, ignore_mask = K.control_flow_ops.while_loop(lambda b,*args: b<m, loop_body, [0, ignore_mask])
+        _, ignore_mask = tf.while_loop(lambda b,*args: b<m, loop_body, [0, ignore_mask])
 
         # 将每幅图的内容压缩，进行处理
         ignore_mask = ignore_mask.stack()
@@ -179,4 +179,5 @@ def yolo_loss(args, anchors, num_classes, ignore_thresh=.5, print_loss=False):
         loss += xy_loss + wh_loss + confidence_loss + class_loss
         if print_loss:
             loss = tf.Print(loss, [loss, xy_loss, wh_loss, confidence_loss, class_loss, K.sum(ignore_mask)], message='loss: ')
+    loss = K.expand_dims(loss, axis=-1)
     return loss

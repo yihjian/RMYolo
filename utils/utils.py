@@ -3,6 +3,8 @@
 from functools import reduce
 
 from PIL import Image
+from PIL import ImageFile
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 import numpy as np
 from matplotlib.colors import rgb_to_hsv, hsv_to_rgb
 
@@ -27,7 +29,7 @@ def letterbox_image(image, size):
 def rand(a=0, b=1):
     return np.random.rand()*(b-a) + a
 
-def get_random_data(annotation_line, input_shape, random=True, max_boxes=20, jitter=.3, hue=.1, sat=1.5, val=1.5, proc_img=True):
+def get_random_data(annotation_line, input_shape=(416,416), random=True, max_boxes=20, jitter=.3, hue=.1, sat=1.5, val=1.5, proc_img=True):
     '''r实时数据增强的随机预处理'''
     line = annotation_line.split()
     image = Image.open(line[0])

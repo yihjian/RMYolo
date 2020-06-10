@@ -1,0 +1,5 @@
+/__pycache__
+/*/__pycache__
+/.vscode
+/log*
+/model_data/yolo_weights.h5

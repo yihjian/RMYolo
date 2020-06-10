@@ -1,10 +1,7 @@
 from functools import wraps
-from keras.layers import Conv2D, Add, ZeroPadding2D, UpSampling2D, Concatenate, MaxPooling2D
-from keras.layers.advanced_activations import LeakyReLU
-from keras.layers.normalization import BatchNormalization
-from keras.regularizers import l2
+from tensorflow.keras.layers import Conv2D, Add, ZeroPadding2D, UpSampling2D, Concatenate, MaxPooling2D, LeakyReLU, BatchNormalization
+from tensorflow.keras.regularizers import l2
 from utils.utils import compose
-
 
 #--------------------------------------------------#
 #   单次卷积

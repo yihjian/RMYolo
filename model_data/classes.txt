@@ -1,0 +1,3 @@
+bot
+red_armor
+blue_armor

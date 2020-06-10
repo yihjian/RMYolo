@@ -1,15 +1,15 @@
 import numpy as np
 import tensorflow as tf
-import keras.backend as K
-from keras.layers import Input, Lambda
-from keras.models import Model
-from keras.optimizers import Adam
-from keras.callbacks import TensorBoard, ModelCheckpoint, ReduceLROnPlateau, EarlyStopping
+import tensorflow.keras.backend as K
+from tensorflow.keras.layers import Input, Lambda
+from tensorflow.keras.models import Model
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint, ReduceLROnPlateau, EarlyStopping
 from nets.yolo3 import yolo_body
 from nets.loss import yolo_loss
-from keras.backend.tensorflow_backend import set_session
+#from tensorflow.keras.backend.tensorflow_backend import set_session
 from utils.utils import get_random_data
-
+from multiprocessing import Pool
 
 #---------------------------------------------------#
 #   获得类和先验框
@@ -36,17 +36,28 @@ def data_generator(annotation_lines, batch_size, input_shape, anchors, num_class
     n = len(annotation_lines)
     i = 0
     while True:
-        image_data = []
-        box_data = []
-        for b in range(batch_size):
-            if i==0:
-                np.random.shuffle(annotation_lines)
-            image, box = get_random_data(annotation_lines[i], input_shape, random=True)
-            image_data.append(image)
-            box_data.append(box)
-            i = (i+1) % n
-        image_data = np.array(image_data)
-        box_data = np.array(box_data)
+        # with Pool(batch_size) as p:
+        #     res = np.array(p.map(get_random_data, annotation_lines[i:i+batch_size]))
+        #     image_data = np.array([r for r in res[:,0]])
+        #     box_data = np.array([r for r in res[:,1]])
+        # p.close()
+        # p.join()
+        res = np.array([get_random_data(l) for l in lines[:8]])
+        box_data = np.array([r for r in res[:,1]])
+        image_data = np.array([r for r in res[:,0]])
+        #print(x.shape, y.shape)
+        # image_daccccccta = []
+        # box_data = []
+        # for b in range(batch_size):
+        #     if i==0:
+        #         np.random.shuffle(annotation_lines)
+        #     image, box = get_random_data(annotation_lines[i], input_shape, random=True)
+        #     image_data.append(image)
+        #     box_data.append(box)
+        #     i = (i+1) % n
+        # image_data = np.array(image_data)
+        # box_data = np.array(box_data)
+        i = (i + batch_size) % n
         y_true = preprocess_true_boxes(box_data, input_shape, anchors, num_classes)
         yield [image_data, *y_true], np.zeros(batch_size)
 
@@ -125,17 +136,21 @@ def preprocess_true_boxes(true_boxes, input_shape, anchors, num_classes):
     return y_true
 
 
-config = tf.ConfigProto()
-config.gpu_options.allocator_type = 'BFC' #A "Best-fit with coalescing" algorithm, simplified from a version of dlmalloc.
-config.gpu_options.per_process_gpu_memory_fraction = 0.7
-config.gpu_options.allow_growth = True
-set_session(tf.Session(config=config)) 
+# config = tf.ConfigProto()
+# config.gpu_options.allocator_type = 'BFC' #A "Best-fit with coalescing" algorithm, simplified from a version of dlmalloc.
+# config.gpu_options.per_process_gpu_memory_fraction = 0.7
+# config.gpu_options.allow_growth = True
+# set_session(tf.Session(config=config)) 
+
+gpus = tf.config.experimental.list_physical_devices(device_type='GPU')
+for gpu in gpus:
+    tf.config.experimental.set_memory_growth(gpu, True)
 
 if __name__ == "__main__":
     # 标签的位置
-    annotation_path = '2007_train.txt'
+    annotation_path = 'train.txt'
     # 获取classes和anchor的位置
-    classes_path = 'model_data/voc_classes.txt'    
+    classes_path = 'model_data/classes.txt'    
     anchors_path = 'model_data/yolo_anchors.txt'
     # 预训练模型的位置
     weights_path = 'model_data/yolo_weights.h5'
@@ -146,12 +161,12 @@ if __name__ == "__main__":
     num_classes = len(class_names)
     num_anchors = len(anchors)
     # 训练后的模型保存的位置
-    log_dir = 'logs/'
+    log_dir = r'F:\RM\yolo3-keras\logs'
     # 输入的shape大小
     input_shape = (416,416)
 
     # 清除session
-    K.clear_session()
+    #K.clear_session()
 
     # 输入的图像为
     image_input = Input(shape=(None, None, 3))
