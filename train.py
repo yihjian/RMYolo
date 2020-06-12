@@ -42,21 +42,21 @@ def data_generator(annotation_lines, batch_size, input_shape, anchors, num_class
         #     box_data = np.array([r for r in res[:,1]])
         # p.close()
         # p.join()
-        res = np.array([get_random_data(l) for l in lines[:8]])
-        box_data = np.array([r for r in res[:,1]])
-        image_data = np.array([r for r in res[:,0]])
+#         res = np.array([get_random_data(l) for l in lines[:8]])
+#         box_data = np.array([r for r in res[:,1]])
+#         image_data = np.array([r for r in res[:,0]])
         #print(x.shape, y.shape)
-        # image_daccccccta = []
-        # box_data = []
-        # for b in range(batch_size):
-        #     if i==0:
-        #         np.random.shuffle(annotation_lines)
-        #     image, box = get_random_data(annotation_lines[i], input_shape, random=True)
-        #     image_data.append(image)
-        #     box_data.append(box)
-        #     i = (i+1) % n
-        # image_data = np.array(image_data)
-        # box_data = np.array(box_data)
+        image_data = []
+        box_data = []
+        for b in range(batch_size):
+            if i==0:
+                np.random.shuffle(annotation_lines)
+            image, box = get_random_data(annotation_lines[i], input_shape, random=True)
+            image_data.append(image)
+            box_data.append(box)
+            i = (i+1) % n
+        image_data = np.array(image_data)
+        box_data = np.array(box_data)
         i = (i + batch_size) % n
         y_true = preprocess_true_boxes(box_data, input_shape, anchors, num_classes)
         yield [image_data, *y_true], np.zeros(batch_size)
@@ -153,7 +153,7 @@ if __name__ == "__main__":
     classes_path = 'model_data/classes.txt'    
     anchors_path = 'model_data/yolo_anchors.txt'
     # 预训练模型的位置
-    weights_path = 'model_data/yolo_weights.h5'
+    weights_path = 'logstrained_weights_stage_1.h5'
     # 获得classes和anchor
     class_names = get_classes(classes_path)
     anchors = get_anchors(anchors_path)
@@ -161,7 +161,7 @@ if __name__ == "__main__":
     num_classes = len(class_names)
     num_anchors = len(anchors)
     # 训练后的模型保存的位置
-    log_dir = r'F:\RM\yolo3-keras\logs'
+    log_dir = 'logs'
     # 输入的shape大小
     input_shape = (416,416)
 
@@ -216,11 +216,11 @@ if __name__ == "__main__":
     num_train = len(lines) - num_val
     
     # 调整非主干模型first
-    if True:
+    if False:
         model.compile(optimizer=Adam(lr=1e-3), loss={
             'yolo_loss': lambda y_true, y_pred: y_pred})
 
-        batch_size = 8
+        batch_size = 64
         print('Train on {} samples, val on {} samples, with batch size {}.'.format(num_train, num_val, batch_size))
         model.fit_generator(data_generator(lines[:num_train], batch_size, input_shape, anchors, num_classes),
                 steps_per_epoch=max(1, num_train//batch_size),
@@ -228,17 +228,20 @@ if __name__ == "__main__":
                 validation_steps=max(1, num_val//batch_size),
                 epochs=50,
                 initial_epoch=0,
+                use_multiprocessing=True,
+                workers=64,
                 callbacks=[logging, checkpoint])
         model.save_weights(log_dir + 'trained_weights_stage_1.h5')
 
     for i in range(freeze_layers): model_body.layers[i].trainable = True
+    print("unfrezzed")
 
     # 解冻后训练
     if True:
         model.compile(optimizer=Adam(lr=1e-4), loss={
             'yolo_loss': lambda y_true, y_pred: y_pred})
 
-        batch_size = 4
+        batch_size = 16
         print('Train on {} samples, val on {} samples, with batch size {}.'.format(num_train, num_val, batch_size))
         model.fit_generator(data_generator(lines[:num_train], batch_size, input_shape, anchors, num_classes),
                 steps_per_epoch=max(1, num_train//batch_size),
@@ -246,5 +249,7 @@ if __name__ == "__main__":
                 validation_steps=max(1, num_val//batch_size),
                 epochs=100,
                 initial_epoch=50,
+                use_multiprocessing=True,
+                workers=16,
                 callbacks=[logging, checkpoint])
         model.save_weights(log_dir + 'last1.h5')
